@@ -66,3 +66,93 @@ https://your-domain.example/mcp
 ```
 
 认证方式没有设置 `AUTH_TOKEN` 时选择无认证；如果设置了 `AUTH_TOKEN`，选择能发送 Bearer Token 的认证方式。
+
+## 使用 ngrok 暴露 HTTPS
+
+ngrok 是目前推荐的临时 HTTPS 隧道方式。它比一些匿名隧道更稳定，但需要一个 ngrok 账号和 authtoken。
+
+### 1. 安装 ngrok
+
+macOS + Homebrew：
+
+```bash
+brew install ngrok/ngrok/ngrok
+```
+
+其他系统可以从 ngrok 官网下载：[ngrok downloads](https://ngrok.com/downloads)
+
+### 2. 配置 authtoken
+
+在 ngrok 控制台获取 authtoken：
+
+```text
+https://dashboard.ngrok.com/get-started/your-authtoken
+```
+
+然后在本机执行：
+
+```bash
+ngrok config add-authtoken <你的 ngrok authtoken>
+```
+
+只需要配置一次。不要把 authtoken 提交到 Git。
+
+### 3. 启动本地 MCP 服务
+
+开一个终端，在项目目录运行：
+
+```bash
+pnpm install
+pnpm dev
+```
+
+确认本地服务正常：
+
+```bash
+curl http://127.0.0.1:8787/health
+```
+
+正常时会看到：
+
+```json
+{"ok":true}
+```
+
+实际返回里还会包含授权目录和端点信息。
+
+### 4. 启动 ngrok HTTPS 隧道
+
+再开一个终端运行：
+
+```bash
+ngrok http 8787
+```
+
+ngrok 会显示类似：
+
+```text
+Forwarding  https://xxxx.ngrok-free.app -> http://localhost:8787
+```
+
+网页端 MCP 服务器 URL 填：
+
+```text
+https://xxxx.ngrok-free.app/mcp
+```
+
+把 `xxxx.ngrok-free.app` 替换成你终端里实际显示的域名。
+
+### 5. 验证外网地址
+
+```bash
+curl https://xxxx.ngrok-free.app/health
+```
+
+如果能返回 `ok: true`，说明 HTTPS 隧道已经连到本机 MCP 服务。
+
+### 常见问题
+
+- `ERR_NGROK_4018`: 没有配置 authtoken，先执行 `ngrok config add-authtoken <token>`。
+- 网页端填了 URL 但连接失败：确认填的是 `/mcp`，不是 `/health` 或根路径。
+- 本地能访问但 ngrok 不能访问：确认 `pnpm dev` 还在运行，且端口是 `8787`。
+- 设置了 `AUTH_TOKEN`：网页端需要配置 Bearer Token，否则会返回 `401 Unauthorized`。
